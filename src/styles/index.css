@@ -1,0 +1,70 @@
+@import './fonts.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply font-body text-[16px] font-light leading-[1.8] antialiased transition-colors duration-700 ease-in-out;
+    @apply bg-cream text-stone dark:bg-obsidian dark:text-silk;
+  }
+
+  ::selection {
+    @apply bg-gold-mid/30 text-carbon dark:text-ivory;
+  }
+}
+
+/* Grain overlay — warm in dark mode, lighter in light mode */
+.grain-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  opacity: 0.022;
+  mix-blend-mode: multiply;
+}
+
+.dark .grain-overlay {
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+}
+
+.grain-overlay svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* WhatsApp floating button — pulse ring */
+@keyframes wa-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+
+/* Respect user motion preference — disables pulse ring */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes wa-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0;
+    }
+  }
+}
+
+/* Focus-visible fallback for browsers not handled via onFocus */
+.wa-link:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(37, 211, 102, 0.6),
+    0 8px 32px rgba(37, 211, 102, 0.45) !important;
+}

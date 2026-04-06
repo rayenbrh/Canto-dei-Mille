@@ -1,0 +1,29 @@
+# Netlify configuration — https://docs.netlify.com/configure-builds/file-based-configuration/
+# Build: Vite outputs to /dist
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA: serve index.html for unknown paths so client-side routing / deep links work.
+# Netlify still serves real files (JS, CSS, images, sw.js) when they exist.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Optional: security headers for the HTML shell
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
