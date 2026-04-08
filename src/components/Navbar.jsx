@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useI18n } from '../context/LanguageContext.jsx'
 import { cn } from '../utils/cn.js'
 import { ThemeToggle } from './ui/ThemeToggle.jsx'
@@ -9,6 +10,7 @@ export function Navbar() {
   const { locale, setLocale, t } = useI18n()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   const links = useMemo(
     () => [
@@ -20,6 +22,8 @@ export function Navbar() {
     ],
     [t],
   )
+
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80)
@@ -35,17 +39,141 @@ export function Navbar() {
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const onChange = () => {
+      if (mq.matches) setOpen(false)
+    }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  const closeMenu = () => setOpen(false)
+
+  const mobileOverlay =
+    mounted &&
+    createPortal(
+      <AnimatePresence mode="wait">
+        {open && (
+          <motion.div
+            key="mobile-nav-overlay"
+            id="mobile-menu-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-[10050] flex max-h-[100dvh] min-h-0 flex-col bg-obsidian lg:hidden"
+            style={{
+              paddingTop: 'max(0px, env(safe-area-inset-top))',
+              paddingBottom: 'max(0px, env(safe-area-inset-bottom))',
+            }}
+          >
+            <div className="flex min-h-0 w-full flex-1 flex-col shadow-[0_0_0_1px_rgba(201,168,76,0.12)]">
+              {/* Top bar — always opaque when menu open */}
+              <div className="flex shrink-0 items-center justify-between gap-4 border-b border-ash/50 px-5 py-4">
+                <a
+                  href="#"
+                  className="min-w-0 flex flex-col"
+                  onClick={closeMenu}
+                >
+                  <span className="truncate font-display text-lg text-gold-mid">Canto dei Mille</span>
+                  <span className="font-body text-[8px] font-light uppercase tracking-[0.35em] text-stone">
+                    {t('nav.tagline')}
+                  </span>
+                </a>
+                <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex items-center gap-0.5 pr-1 font-body text-[10px] font-light uppercase tracking-[0.15em] text-stone">
+                    <button
+                      type="button"
+                      onClick={() => setLocale('en')}
+                      className={cn('min-h-[44px] min-w-[40px]', locale === 'en' ? 'text-gold-mid' : 'text-silk/70')}
+                    >
+                      EN
+                    </button>
+                    <span className="text-stone/50" aria-hidden>
+                      /
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setLocale('it')}
+                      className={cn('min-h-[44px] min-w-[40px]', locale === 'it' ? 'text-gold-mid' : 'text-silk/70')}
+                    >
+                      IT
+                    </button>
+                  </div>
+                  <ThemeToggle />
+                  <button
+                    type="button"
+                    aria-label={t('a11y.closeMenu')}
+                    className="flex h-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-none border border-ash/50 text-gold-mid transition-colors hover:border-gold-mid hover:bg-ash/30"
+                    onClick={closeMenu}
+                  >
+                    <X className="h-6 w-6" strokeWidth={1.1} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Links */}
+              <nav className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 overflow-y-auto px-6 py-10">
+                {links.map((l, i) => (
+                  <motion.a
+                    key={l.href}
+                    href={l.href}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 + i * 0.05, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                    onClick={closeMenu}
+                    className="group relative w-full max-w-md py-4 text-center font-display text-4xl font-normal tracking-tight text-silk sm:text-5xl"
+                  >
+                    <span className="relative inline-block">
+                      {l.label}
+                      <span className="absolute -bottom-1 left-0 h-px w-0 bg-gold-mid transition-all duration-300 group-hover:w-full" />
+                    </span>
+                  </motion.a>
+                ))}
+              </nav>
+
+              <div className="shrink-0 border-t border-ash/40 px-6 py-5 text-center">
+                <a
+                  href="#contact"
+                  onClick={closeMenu}
+                  className="inline-block border border-gold-mid px-8 py-3 font-body text-xs font-light uppercase tracking-[0.2em] text-gold-mid transition-colors hover:bg-gold-mid hover:text-obsidian"
+                >
+                  {t('nav.bookNow')}
+                </a>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>,
+      document.body,
+    )
+
   return (
     <header
       className={cn(
         'fixed inset-x-0 top-0 z-50 transition-all duration-500',
-        scrolled
-          ? 'border-b border-stone/20 bg-cream/90 backdrop-blur-xl dark:border-ash/40 dark:bg-obsidian/85'
-          : 'border-b border-transparent bg-transparent',
+        open
+          ? 'border-b border-ash/50 bg-obsidian shadow-[0_8px_32px_rgba(0,0,0,0.35)] dark:border-ash/50 dark:bg-obsidian'
+          : scrolled
+            ? 'border-b border-stone/20 bg-cream/90 backdrop-blur-xl dark:border-ash/40 dark:bg-obsidian/85'
+            : 'border-b border-transparent bg-transparent',
       )}
     >
       <nav className="mx-auto flex max-w-[1600px] items-center justify-between px-5 py-5 md:px-10 lg:px-14">
-        <a href="#" className="group flex flex-col">
+        <a href="#" className="group flex min-w-0 flex-col">
           <span className="font-display text-xl text-gold-mid transition-colors group-hover:text-gold-bright">
             Canto dei Mille
           </span>
@@ -124,6 +252,7 @@ export function Navbar() {
           <button
             type="button"
             aria-expanded={open}
+            aria-controls="mobile-menu-dialog"
             aria-label={open ? t('a11y.closeMenu') : t('a11y.openMenu')}
             className="flex h-11 min-h-[44px] min-w-[44px] items-center justify-center text-gold-mid"
             onClick={() => setOpen((o) => !o)}
@@ -133,34 +262,7 @@ export function Navbar() {
         </div>
       </nav>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ y: '-100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '-100%', opacity: 0 }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[100] flex flex-col bg-obsidian px-8 pb-16 pt-28 lg:hidden"
-          >
-            <div className="flex flex-1 flex-col items-center justify-center gap-8">
-              {links.map((l, i) => (
-                <motion.a
-                  key={l.href}
-                  href={l.href}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.06 * i, duration: 0.45 }}
-                  onClick={() => setOpen(false)}
-                  className="group relative font-display text-5xl font-normal text-silk"
-                >
-                  {l.label}
-                  <span className="absolute -bottom-2 left-0 h-px w-0 bg-gold-mid transition-all duration-300 group-hover:w-full" />
-                </motion.a>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {mobileOverlay}
     </header>
   )
 }
